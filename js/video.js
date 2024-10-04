@@ -7,37 +7,94 @@ function getTimeString(time) {
     return `${hour} hour ${minute} minute ${remainingSeconds} seconds ago`;
 }
 
+const removeActiveClass = () =>{
+    const buttons = document.getElementsByClassName("category-btn");
+    console.log(buttons);
+    for (let button of buttons) {
+        button.classList.remove("active");
+    }
+}
+
 // Fetch, Load and Show Catagories on HTML
 // Create loadCatagories 
 const loadCategories = () => {
     // Fetch The Data
     fetch("https://openapi.programming-hero.com/api/phero-tube/categories")
-    .then(res => res.json())
-    .then((data) => displayCategories(data.categories))
-    .catch((error) => console.log(error))
+        .then(res => res.json())
+        .then((data) => displayCategories(data.categories))
+        .catch((error) => console.log(error))
 };
 
 
-const loadVideos = () => {
+const loadVideos = (searchText = "") => {
     // Fetch The Data
-    fetch("https://openapi.programming-hero.com/api/phero-tube/videos")
-    .then(res => res.json())
-    .then((data) => displayVideos(data.videos))
-    .catch((error) => console.log(error))
+    fetch(`https://openapi.programming-hero.com/api/phero-tube/videos?title=${searchText}`)
+        .then(res => res.json())
+        .then((data) => displayVideos(data.videos))
+        .catch((error) => console.log(error))
 };
 
 const loadCategoryVideos = (id) => {
     // alert(id);
     fetch(`https://openapi.programming-hero.com/api/phero-tube/category/${id}`)
-    .then(res => res.json())
-    .then((data) => (data.videos))
-    .catch((error) => console.log(error))
+        .then(res => res.json())
+        .then((data) => {
+            // Remove Active Class From All
+            removeActiveClass();
+            // Active the id Class
+            const activeButton = document.getElementById(`btn-${id}`);
+            activeButton.classList.add("active");
+            displayVideos(data.category);
+        })
+        .catch((error) => console.log(error))
 }
 
+
+const loadDetails = async(videoId) => {
+    console.log(videoId);
+    const url = `https://openapi.programming-hero.com/api/phero-tube/video/${videoId}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    displayDetails(data.video);
+}
+
+
+const displayDetails = (video) => {
+    console.log(video);
+    const detailsContainer = document.getElementById("modal-content");
+    detailsContainer.innerHTML = `
+    <img src="${video.thumbnail}">
+    <p>${video.description}</p>
+    `
+    // way-1
+    // document.getElementById("ShowModalData").click();
+    // way-2
+    document.getElementById("customModal").showModal();
+}
+
+
 const displayVideos = (videos) =>{
-    const videosContainer = document.getElementById("videos-container")
+    const videosContainer = document.getElementById("videos-container");
+    videosContainer.innerHTML = "";
+
+    if (videos.length === 0) {
+        videosContainer.classList.remove("grid");
+        videosContainer.innerHTML = `
+        <div class="min-h-[300px] w-full mx-auto flex flex-col gap-5 justify-center items-center">
+        <img src="assets/Icon.png" alt="No Content Icon">
+        <h2 class="text-center text-2xl font-extrabold">
+        Oops!! Sorry, There is no content here
+        </h2>
+        </div>
+        `;
+        return;
+    }
+    else {
+        videosContainer.classList.add("grid");
+    }
+
     videos.forEach((video) => {        
-        console.log(video);
+        // console.log(video);
         const card = document.createElement("div");
         card.classList = "card card-compact"
         card.innerHTML = `
@@ -46,7 +103,7 @@ const displayVideos = (videos) =>{
             ${
                 video.others.posted_date?.length === 0 
                 ? "" 
-                : `<span class="absolute text-xs right-6 bottom-20 bg-black text-white rounded p-1">${getTimeString(video.others.posted_date)}</span>`
+                : `<span class="absolute text-xs right-6 bottom-28 bg-black text-white rounded p-1">${getTimeString(video.others.posted_date)}</span>`
             }
             
         </figure>
@@ -64,7 +121,9 @@ const displayVideos = (videos) =>{
                         : ""
                     }                       
                 </div>
-                <p></p>
+                <button onclick="loadDetails('${video.video_id}')" class="btn btn-sm btn-error">
+                Details
+                </button>
             </div>
         </div>
         `;
@@ -82,7 +141,7 @@ const displayCategories = (categories) => {
         // Create Button
         const buttonContainer = document.createElement("div");
         buttonContainer.innerHTML = `
-            <button onclick="loadCategoryVideos()" class="btn">
+            <button id="btn-${item.category_id}" onclick="loadCategoryVideos(${item.category_id})" class="btn category-btn">
             ${item.category}
             </button>
         `;
@@ -91,5 +150,9 @@ const displayCategories = (categories) => {
         categoryContainer.append(buttonContainer);
     });  
 };
+
+document.getElementById("search-input").addEventListener("keyup", (e) => {
+    loadVideos(e.target.value);
+});
 loadCategories();
 loadVideos();
